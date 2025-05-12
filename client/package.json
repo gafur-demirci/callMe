@@ -2,9 +2,9 @@
   "name": "callme",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "main.js",
   "scripts": {
-    "start": "electron app/main.js"
+    "start": "electron ."
   },
   "keywords": [],
   "author": "",
