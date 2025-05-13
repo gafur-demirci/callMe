@@ -14,5 +14,6 @@ function createWindow() {
 
   win.loadFile("index.html");
 }
+console.log("Electron app starting...");
 
 app.whenReady().then(createWindow);
