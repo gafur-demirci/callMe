@@ -6,8 +6,8 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*"
-  }
+    origin: "*",
+  },
 });
 
 io.on("connection", (socket) => {
@@ -15,8 +15,12 @@ io.on("connection", (socket) => {
 
   socket.on("offer", (data) => socket.broadcast.emit("offer", data));
   socket.on("answer", (data) => socket.broadcast.emit("answer", data));
-  socket.on("ice-candidate", (data) => socket.broadcast.emit("ice-candidate", data));
-
+  socket.on("ice-candidate", (data) =>
+    socket.broadcast.emit("ice-candidate", data)
+  );
+  socket.on("call-cancelled", () => {
+    socket.broadcast.emit("call-cancelled");
+  });
   socket.on("disconnect", () => {
     console.log("Ayrıldı:", socket.id);
   });
