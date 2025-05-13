@@ -1,4 +1,4 @@
-import { io } from "socket.io-client";
+// import { io } from "socket.io-client";
 
 const socket = io("http://localhost:3000");
 
@@ -117,6 +117,8 @@ socket.on("ice-candidate", async (candidate) => {
 
 // Mikrofon iznini kontrol et ve butonları ayarla
 window.onload = async () => {
+  console.log("Window loaded");
+  
   try {
     await getMicrophoneStream();
     microphoneAllowed = true;
@@ -125,6 +127,6 @@ window.onload = async () => {
     microphoneAllowed = false;
   }
 
-  // startCallBtn.disabled = !microphoneAllowed;
-  // acceptCallBtn.disabled = !microphoneAllowed;
+  startCallBtn.disabled = !microphoneAllowed;
+  acceptCallBtn.disabled = !microphoneAllowed;
 };
