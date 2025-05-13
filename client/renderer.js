@@ -63,6 +63,7 @@ startCallBtn.onclick = async () => {
 acceptCallBtn.onclick = async () => {
   updateStatus("Çağrı kabul edildi. Bağlantı kuruluyor...");
   accepted = true;
+  hideIncomingCall();
 
   if (offerReceived) {
     await handleOffer(offerReceived);
