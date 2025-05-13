@@ -1,31 +1,46 @@
-const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 
-const app = express();
-const server = http.createServer(app);
+const server = http.createServer();
 const io = new Server(server, {
-  cors: {
-    origin: "*",
-  },
+  cors: { origin: "*" },
 });
 
-io.on("connection", (socket) => {
-  console.log("Bağlandı:", socket.id);
+const users = {}; // username -> socket.id
 
-  socket.on("offer", (data) => socket.broadcast.emit("offer", data));
-  socket.on("answer", (data) => socket.broadcast.emit("answer", data));
-  socket.on("ice-candidate", (data) =>
-    socket.broadcast.emit("ice-candidate", data)
-  );
-  socket.on("call-cancelled", () => {
-    socket.broadcast.emit("call-cancelled");
+io.on("connection", (socket) => {
+  socket.on("register", (username) => {
+    users[username] = socket.id;
+    socket.username = username;
+    io.emit("user-list", Object.keys(users));
   });
+
+  socket.on("offer", ({ target, offer, from }) => {
+    const targetId = users[target];
+    if (targetId) io.to(targetId).emit("offer", { offer, from });
+  });
+
+  socket.on("answer", ({ target, answer }) => {
+    const targetId = users[target];
+    if (targetId) io.to(targetId).emit("answer", answer);
+  });
+
+  socket.on("ice-candidate", ({ target, candidate }) => {
+    const targetId = users[target];
+    if (targetId) io.to(targetId).emit("ice-candidate", candidate);
+  });
+
+  socket.on("call-cancelled", ({ target }) => {
+    const targetId = users[target];
+    if (targetId) io.to(targetId).emit("call-cancelled");
+  });
+
   socket.on("disconnect", () => {
-    console.log("Ayrıldı:", socket.id);
+    delete users[socket.username];
+    io.emit("user-list", Object.keys(users));
   });
 });
 
 server.listen(3000, () => {
-  console.log("Sinyal sunucusu çalışıyor: http://localhost:3000");
+  console.log("Signaling server listening on port 3000");
 });
