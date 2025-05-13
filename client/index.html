@@ -3,9 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <title>Sesli Görüşme</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
       body {
-        font-family: 'Segoe UI', sans-serif;
+        font-family: "Segoe UI", sans-serif;
         background: #f9f9f9;
         text-align: center;
         padding-top: 60px;
@@ -50,10 +51,16 @@
   </head>
   <body>
     <h1>Sesli Görüşme Uygulaması</h1>
-    <button id="startCall" >Çağrı Başlat</button>
-    <button id="acceptCall" >Gelen Çağrıyı Kabul Et</button>
+    <button id="startCall">Çağrı Başlat</button>
+    <button id="acceptCall">Gelen Çağrıyı Kabul Et</button>
     <button id="endCall">Görüşmeyi Bitir</button>
     <p id="status">Durum: Mikrofon kontrol ediliyor...</p>
-    <script type="module" src="renderer.js"></script>
+    <button id="test">Test</button>
+    <script src="renderer.js">
+      // const testBtn = document.getElementById("test");
+      // testBtn.addEventListener("click", () => {
+      //   console.log("Test butonuna tıklandı");
+      // });
+    </script>
   </body>
 </html>
