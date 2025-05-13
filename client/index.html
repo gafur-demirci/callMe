@@ -55,12 +55,20 @@
     <button id="acceptCall">Gelen Çağrıyı Kabul Et</button>
     <button id="endCall">Görüşmeyi Bitir</button>
     <p id="status">Durum: Mikrofon kontrol ediliyor...</p>
-    <button id="test">Test</button>
-    <script src="renderer.js">
-      // const testBtn = document.getElementById("test");
-      // testBtn.addEventListener("click", () => {
-      //   console.log("Test butonuna tıklandı");
-      // });
-    </script>
+    <!-- status paragraflarının altına ekle -->
+    <div
+      id="incomingCall"
+      style="
+        display: none;
+        background: #ffc;
+        padding: 10px;
+        margin-top: 15px;
+        border: 1px solid #ccc;
+      "
+    >
+      📞 <strong>Gelen çağrı var!</strong> Kabul etmek için "Gelen Çağrıyı Kabul
+      Et" butonuna tıklayın.
+    </div>
+    <script src="renderer.js"></script>
   </body>
 </html>
