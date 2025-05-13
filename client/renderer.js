@@ -1,11 +1,20 @@
 const socket = io("http://localhost:3000");
 // MARK: - BUTTONS
+const usernameInput = document.getElementById("usernameInput");
+const joinBtn = document.getElementById("joinBtn");
+const userListEl = document.getElementById("userList");
+const targetUserSelect = document.getElementById("targetUser");
+
 const startCallBtn = document.getElementById("startCall");
-const cancelCallBtn = document.getElementById("cancelCall");
 const acceptCallBtn = document.getElementById("acceptCall");
 const endCallBtn = document.getElementById("endCall");
+const cancelCallBtn = document.getElementById("cancelCall");
+
 const statusText = document.getElementById("status");
+const incomingCallDiv = document.getElementById("incomingCall");
 // MARK: - VARIABLES
+let myUsername = "";
+let callingUser = "";
 let peerConnection;
 let localStream;
 let offerReceived = null;
@@ -37,14 +46,15 @@ async function getMicrophoneStream() {
 
 async function setupPeerConnection() {
   peerConnection = new RTCPeerConnection({
-    iceServers: [
-      { urls: "stun:stun.l.google.com:19302" }
-    ]
+    iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
   });
 
   peerConnection.onicecandidate = (event) => {
     if (event.candidate) {
-      socket.emit("ice-candidate", event.candidate);
+      socket.emit("ice-candidate", {
+        target: callingUser,
+        candidate: event.candidate,
+      });
     }
   };
 
@@ -72,40 +82,52 @@ async function handleOffer(offer) {
 }
 // MARK: - BUTTON EVENTS
 startCallBtn.onclick = async () => {
-  updateStatus("Çağrı başlatılıyor...");
+  callingUser = targetUserSelect.value;
+  if (!callingUser) return alert("Hedef kullanıcı seçilmedi.");
+
   await setupPeerConnection();
   localStream = await getMicrophoneStream();
-
-  localStream.getTracks().forEach((track) => {
-    peerConnection.addTrack(track, localStream);
-  });
+  localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
   const offer = await peerConnection.createOffer();
   await peerConnection.setLocalDescription(offer);
-  socket.emit("offer", offer);
 
-  cancelCallBtn.disabled = false; // 👈 butonu aktif et
+  socket.emit("offer", {
+    target: callingUser,
+    offer,
+    from: myUsername
+  });
+
+  cancelCallBtn.disabled = false;
+};
+
+acceptCallBtn.onclick = async () => {
+  if (!offerReceived) return;
+
+  accepted = true;
+  await setupPeerConnection();
+  localStream = await getMicrophoneStream();
+  localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+  await peerConnection.setRemoteDescription(new RTCSessionDescription(offerReceived.offer));
+  callingUser = offerReceived.from;
+
+  const answer = await peerConnection.createAnswer();
+  await peerConnection.setLocalDescription(answer);
+
+  socket.emit("answer", {
+    target: callingUser,
+    answer
+  });
+
+  hideIncomingCall();
+  updateStatus("Görüşme başladı.");
 };
 
 cancelCallBtn.onclick = () => {
   socket.emit("call-cancelled");
   updateStatus("Çağrı iptal edildi.");
   cancelCallBtn.disabled = true;
-};
-
-acceptCallBtn.onclick = async () => {
-  updateStatus("Çağrı kabul edildi. Bağlantı kuruluyor...");
-  accepted = true;
-  hideIncomingCall();
-
-  if (offerReceived) {
-    await handleOffer(offerReceived);
-  }
-
-  if (!offerReceived) {
-  updateStatus("Aktif çağrı yok.");
-  return;
-}
 };
 
 endCallBtn.onclick = () => {
@@ -115,21 +137,36 @@ endCallBtn.onclick = () => {
     updateStatus("Görüşme sonlandırıldı.");
   }
 };
-// MARK: - SOCKET EVENTS
-socket.on("offer", async (offer) => {
-  offerReceived = offer;
-  updateStatus("Gelen çağrı var. Kabul etmek için butona basın.");
-  showIncomingCall(); // 👈 burada bildirimi göster
 
-  if (accepted) {
-    await handleOffer(offer);
-    hideIncomingCall(); // 👈 çağrı kabul edildiğinde gizle
-  }
+joinBtn.onclick = () => {
+  const name = usernameInput.value.trim();
+  if (!name) return alert("Lütfen kullanıcı adı girin.");
+  myUsername = name;
+  socket.emit("register", name);
+  joinBtn.disabled = true;
+  usernameInput.disabled = true;
+  updateStatus(`${name} olarak giriş yapıldı.`);
+};
+
+// MARK: - SOCKET EVENTS
+socket.on("offer", (data) => {
+  offerReceived = data;
+  callingUser = data.from;
+  showIncomingCall();
+  updateStatus(`${callingUser} kullanıcısından gelen çağrı.`);
 });
 
 socket.on("answer", async (answer) => {
   await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-  updateStatus("Karşı taraf cevap verdi. Görüşme başladı.");
+  updateStatus("Karşı taraf cevap verdi.");
+});
+
+socket.on("ice-candidate", async (candidate) => {
+  try {
+    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+  } catch (e) {
+    console.error("ICE eklenemedi", e);
+  }
 });
 
 socket.on("call-cancelled", () => {
@@ -139,12 +176,24 @@ socket.on("call-cancelled", () => {
   accepted = false;
 });
 
-socket.on("ice-candidate", async (candidate) => {
-  try {
-    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-  } catch (e) {
-    console.error("ICE eklenemedi:", e);
-  }
+socket.on("user-list", (users) => {
+  userListEl.innerHTML = "";
+  targetUserSelect.innerHTML = "";
+
+  users.forEach((user) => {
+    if (user !== myUsername) {
+      const li = document.createElement("li");
+      li.textContent = user;
+      userListEl.appendChild(li);
+
+      const option = document.createElement("option");
+      option.value = user;
+      option.textContent = user;
+      targetUserSelect.appendChild(option);
+    }
+  });
+
+  startCallBtn.disabled = users.length <= 1;
 });
 
 // MARK: - INITIALIZATION
