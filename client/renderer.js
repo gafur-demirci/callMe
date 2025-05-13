@@ -101,6 +101,11 @@ acceptCallBtn.onclick = async () => {
   if (offerReceived) {
     await handleOffer(offerReceived);
   }
+
+  if (!offerReceived) {
+  updateStatus("Aktif çağrı yok.");
+  return;
+}
 };
 
 endCallBtn.onclick = () => {
