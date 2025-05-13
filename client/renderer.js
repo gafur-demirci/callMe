@@ -1,20 +1,29 @@
 const socket = io("http://localhost:3000");
-
+// BUTTONS
 const startCallBtn = document.getElementById("startCall");
+const cancelCallBtn = document.getElementById("cancelCall");
 const acceptCallBtn = document.getElementById("acceptCall");
 const endCallBtn = document.getElementById("endCall");
 const statusText = document.getElementById("status");
-
+// VARIABLES
 let peerConnection;
 let localStream;
 let offerReceived = null;
 let accepted = false;
-
+// FUNCTIONS
 function updateStatus(text, isError = false) {
   statusText.textContent = `Durum: ${text}`;
   statusText.className = isError ? "error" : "";
 }
 
+function showIncomingCall() {
+  document.getElementById("incomingCall").style.display = "block";
+}
+
+function hideIncomingCall() {
+  document.getElementById("incomingCall").style.display = "none";
+}
+// ASYNC FUNCTIONS
 async function getMicrophoneStream() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -46,6 +55,22 @@ async function setupPeerConnection() {
   };
 }
 
+async function handleOffer(offer) {
+  await setupPeerConnection();
+  localStream = await getMicrophoneStream();
+
+  localStream.getTracks().forEach((track) => {
+    peerConnection.addTrack(track, localStream);
+  });
+
+  await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+
+  const answer = await peerConnection.createAnswer();
+  await peerConnection.setLocalDescription(answer);
+  socket.emit("answer", answer);
+  updateStatus("Bağlantı kuruldu!");
+}
+// BUTTON EVENTS
 startCallBtn.onclick = async () => {
   updateStatus("Çağrı başlatılıyor...");
   await setupPeerConnection();
@@ -58,6 +83,14 @@ startCallBtn.onclick = async () => {
   const offer = await peerConnection.createOffer();
   await peerConnection.setLocalDescription(offer);
   socket.emit("offer", offer);
+
+  cancelCallBtn.disabled = false; // 👈 butonu aktif et
+};
+
+cancelCallBtn.onclick = () => {
+  socket.emit("call-cancelled");
+  updateStatus("Çağrı iptal edildi.");
+  cancelCallBtn.disabled = true;
 };
 
 acceptCallBtn.onclick = async () => {
@@ -77,7 +110,7 @@ endCallBtn.onclick = () => {
     updateStatus("Görüşme sonlandırıldı.");
   }
 };
-
+// SOCKET EVENTS
 socket.on("offer", async (offer) => {
   offerReceived = offer;
   updateStatus("Gelen çağrı var. Kabul etmek için butona basın.");
@@ -89,25 +122,16 @@ socket.on("offer", async (offer) => {
   }
 });
 
-async function handleOffer(offer) {
-  await setupPeerConnection();
-  localStream = await getMicrophoneStream();
-
-  localStream.getTracks().forEach((track) => {
-    peerConnection.addTrack(track, localStream);
-  });
-
-  await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-
-  const answer = await peerConnection.createAnswer();
-  await peerConnection.setLocalDescription(answer);
-  socket.emit("answer", answer);
-  updateStatus("Bağlantı kuruldu!");
-}
-
 socket.on("answer", async (answer) => {
   await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
   updateStatus("Karşı taraf cevap verdi. Görüşme başladı.");
+});
+
+socket.on("call-cancelled", () => {
+  updateStatus("Karşı taraf çağrıyı iptal etti.");
+  hideIncomingCall();
+  offerReceived = null;
+  accepted = false;
 });
 
 socket.on("ice-candidate", async (candidate) => {
@@ -118,13 +142,7 @@ socket.on("ice-candidate", async (candidate) => {
   }
 });
 
-function showIncomingCall() {
-  document.getElementById("incomingCall").style.display = "block";
-}
 
-function hideIncomingCall() {
-  document.getElementById("incomingCall").style.display = "none";
-}
 
 window.onload = async () => {
   try {
