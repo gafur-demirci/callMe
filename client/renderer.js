@@ -1,16 +1,16 @@
 const socket = io("http://localhost:3000");
-// BUTTONS
+// MARK: - BUTTONS
 const startCallBtn = document.getElementById("startCall");
 const cancelCallBtn = document.getElementById("cancelCall");
 const acceptCallBtn = document.getElementById("acceptCall");
 const endCallBtn = document.getElementById("endCall");
 const statusText = document.getElementById("status");
-// VARIABLES
+// MARK: - VARIABLES
 let peerConnection;
 let localStream;
 let offerReceived = null;
 let accepted = false;
-// FUNCTIONS
+// MARK: - FUNCTIONS
 function updateStatus(text, isError = false) {
   statusText.textContent = `Durum: ${text}`;
   statusText.className = isError ? "error" : "";
@@ -23,7 +23,7 @@ function showIncomingCall() {
 function hideIncomingCall() {
   document.getElementById("incomingCall").style.display = "none";
 }
-// ASYNC FUNCTIONS
+// MARK: - ASYNC FUNCTIONS
 async function getMicrophoneStream() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -70,7 +70,7 @@ async function handleOffer(offer) {
   socket.emit("answer", answer);
   updateStatus("Bağlantı kuruldu!");
 }
-// BUTTON EVENTS
+// MARK: - BUTTON EVENTS
 startCallBtn.onclick = async () => {
   updateStatus("Çağrı başlatılıyor...");
   await setupPeerConnection();
@@ -115,7 +115,7 @@ endCallBtn.onclick = () => {
     updateStatus("Görüşme sonlandırıldı.");
   }
 };
-// SOCKET EVENTS
+// MARK: - SOCKET EVENTS
 socket.on("offer", async (offer) => {
   offerReceived = offer;
   updateStatus("Gelen çağrı var. Kabul etmek için butona basın.");
@@ -147,8 +147,7 @@ socket.on("ice-candidate", async (candidate) => {
   }
 });
 
-
-
+// MARK: - INITIALIZATION
 window.onload = async () => {
   try {
     await getMicrophoneStream();
