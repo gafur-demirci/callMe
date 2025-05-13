@@ -1,5 +1,3 @@
-// import { io } from "socket.io-client";
-
 const socket = io("http://localhost:3000");
 
 const startCallBtn = document.getElementById("startCall");
@@ -9,15 +7,12 @@ const statusText = document.getElementById("status");
 
 let peerConnection;
 let localStream;
-let microphoneAllowed = false;
+let offerReceived = null;
+let accepted = false;
 
 function updateStatus(text, isError = false) {
   statusText.textContent = `Durum: ${text}`;
-  if (isError) {
-    statusText.classList.add("error");
-  } else {
-    statusText.classList.remove("error");
-  }
+  statusText.className = isError ? "error" : "";
 }
 
 async function getMicrophoneStream() {
@@ -26,7 +21,7 @@ async function getMicrophoneStream() {
     return stream;
   } catch (err) {
     updateStatus("Mikrofon izni reddedildi. Lütfen izin verin.", true);
-    alert("Lütfen mikrofon erişimine izin verin. Ayarlardan tekrar açabilirsiniz.");
+    alert("Lütfen mikrofon erişimine izin verin.");
     throw err;
   }
 }
@@ -34,7 +29,7 @@ async function getMicrophoneStream() {
 async function setupPeerConnection() {
   peerConnection = new RTCPeerConnection({
     iceServers: [
-      { urls: "stun:stun.l.google.com:19302" } // TURN yok
+      { urls: "stun:stun.l.google.com:19302" }
     ]
   });
 
@@ -66,7 +61,34 @@ startCallBtn.onclick = async () => {
 };
 
 acceptCallBtn.onclick = async () => {
-  updateStatus("Çağrı kabul ediliyor...");
+  updateStatus("Çağrı kabul edildi. Bağlantı kuruluyor...");
+  accepted = true;
+
+  if (offerReceived) {
+    await handleOffer(offerReceived);
+  }
+};
+
+endCallBtn.onclick = () => {
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+    updateStatus("Görüşme sonlandırıldı.");
+  }
+};
+
+socket.on("offer", async (offer) => {
+  offerReceived = offer;
+  updateStatus("Gelen çağrı var. Kabul etmek için butona basın.");
+  showIncomingCall(); // 👈 burada bildirimi göster
+
+  if (accepted) {
+    await handleOffer(offer);
+    hideIncomingCall(); // 👈 çağrı kabul edildiğinde gizle
+  }
+});
+
+async function handleOffer(offer) {
   await setupPeerConnection();
   localStream = await getMicrophoneStream();
 
@@ -74,37 +96,17 @@ acceptCallBtn.onclick = async () => {
     peerConnection.addTrack(track, localStream);
   });
 
+  await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+
   const answer = await peerConnection.createAnswer();
   await peerConnection.setLocalDescription(answer);
   socket.emit("answer", answer);
-};
-
-endCallBtn.onclick = async () => {
-  console.log("End call button clicked");
-  
-  if (peerConnection) {
-    peerConnection.close();
-    peerConnection = null;
-    updateStatus("Görüşme sonlandırıldı.");
-  }else {
-    updateStatus("Henüz bir görüşme yok.");
-    localStream = await getMicrophoneStream();
-
-  localStream.getTracks().forEach((track) => {
-    peerConnection.addTrack(track, localStream);
-  });
-  }
-};
-
-socket.on("offer", async (offer) => {
-  if (!peerConnection) await setupPeerConnection();
-  await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-  updateStatus("Gelen çağrı var. Kabul etmek için butona basın.");
-});
+  updateStatus("Bağlantı kuruldu!");
+}
 
 socket.on("answer", async (answer) => {
   await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-  updateStatus("Bağlantı kuruldu!");
+  updateStatus("Karşı taraf cevap verdi. Görüşme başladı.");
 });
 
 socket.on("ice-candidate", async (candidate) => {
@@ -115,18 +117,21 @@ socket.on("ice-candidate", async (candidate) => {
   }
 });
 
-// Mikrofon iznini kontrol et ve butonları ayarla
+function showIncomingCall() {
+  document.getElementById("incomingCall").style.display = "block";
+}
+
+function hideIncomingCall() {
+  document.getElementById("incomingCall").style.display = "none";
+}
+
 window.onload = async () => {
-  console.log("Window loaded");
-  
   try {
     await getMicrophoneStream();
-    microphoneAllowed = true;
     updateStatus("Mikrofon erişimi başarılı.");
+    startCallBtn.disabled = false;
+    acceptCallBtn.disabled = false;
   } catch {
-    microphoneAllowed = false;
+    updateStatus("Mikrofona erişilemiyor.", true);
   }
-
-  startCallBtn.disabled = !microphoneAllowed;
-  acceptCallBtn.disabled = !microphoneAllowed;
 };
