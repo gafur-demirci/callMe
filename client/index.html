@@ -50,26 +50,25 @@
     </style>
   </head>
   <body>
-    <h1>Sesli Görüşme Uygulaması</h1>
-    <button id="startCall">Çağrı Başlat</button>
+    <h2>Sesli Görüşme</h2>
+
+    <input type="text" id="usernameInput" placeholder="Kullanıcı adınız" />
+    <button id="joinBtn">Giriş Yap</button>
+
+    <h3>Aktif Kullanıcılar</h3>
+    <ul id="userList"></ul>
+
+    <select id="targetUser"></select>
+    <button id="startCall" disabled>Çağrı Başlat</button>
     <button id="cancelCall" disabled>Çağrıyı İptal Et</button>
-    <button id="acceptCall">Gelen Çağrıyı Kabul Et</button>
-    <button id="endCall">Görüşmeyi Bitir</button>
-    <p id="status">Durum: Mikrofon kontrol ediliyor...</p>
-    <!-- status paragraflarının altına ekle -->
-    <div
-      id="incomingCall"
-      style="
-        display: none;
-        background: #ffc;
-        padding: 10px;
-        margin-top: 15px;
-        border: 1px solid #ccc;
-      "
-    >
-      📞 <strong>Gelen çağrı var!</strong> Kabul etmek için "Gelen Çağrıyı Kabul
-      Et" butonuna tıklayın.
+    <button id="endCall" disabled>Sonlandır</button>
+
+    <div id="incomingCall" style="display: none">
+      <p>Gelen çağrı var!</p>
+      <button id="acceptCall">Kabul Et</button>
     </div>
+
+    <p id="status">Durum: Bekleniyor...</p>
     <script src="renderer.js"></script>
   </body>
 </html>
