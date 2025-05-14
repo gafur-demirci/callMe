@@ -87,7 +87,9 @@ startCallBtn.onclick = async () => {
 
   await setupPeerConnection();
   localStream = await getMicrophoneStream();
-  localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+  localStream
+    .getTracks()
+    .forEach((track) => peerConnection.addTrack(track, localStream));
 
   const offer = await peerConnection.createOffer();
   await peerConnection.setLocalDescription(offer);
@@ -95,7 +97,7 @@ startCallBtn.onclick = async () => {
   socket.emit("offer", {
     target: callingUser,
     offer,
-    from: myUsername
+    from: myUsername,
   });
 
   cancelCallBtn.disabled = false;
@@ -107,9 +109,13 @@ acceptCallBtn.onclick = async () => {
   accepted = true;
   await setupPeerConnection();
   localStream = await getMicrophoneStream();
-  localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+  localStream
+    .getTracks()
+    .forEach((track) => peerConnection.addTrack(track, localStream));
 
-  await peerConnection.setRemoteDescription(new RTCSessionDescription(offerReceived.offer));
+  await peerConnection.setRemoteDescription(
+    new RTCSessionDescription(offerReceived.offer)
+  );
   callingUser = offerReceived.from;
 
   const answer = await peerConnection.createAnswer();
@@ -117,11 +123,13 @@ acceptCallBtn.onclick = async () => {
 
   socket.emit("answer", {
     target: callingUser,
-    answer
+    answer,
   });
 
   hideIncomingCall();
   updateStatus("Görüşme başladı.");
+  cancelCallBtn.disabled = true;
+  endCallBtn.disabled = false;
 };
 
 cancelCallBtn.onclick = () => {
@@ -135,6 +143,7 @@ endCallBtn.onclick = () => {
     peerConnection.close();
     peerConnection = null;
     updateStatus("Görüşme sonlandırıldı.");
+    endCallBtn.disabled = true;
   }
 };
 
@@ -159,6 +168,8 @@ socket.on("offer", (data) => {
 socket.on("answer", async (answer) => {
   await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
   updateStatus("Karşı taraf cevap verdi.");
+  cancelCallBtn.disabled = true;
+  endCallBtn.disabled = false;
 });
 
 socket.on("ice-candidate", async (candidate) => {
