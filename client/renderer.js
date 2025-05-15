@@ -12,6 +12,9 @@ const cancelCallBtn = document.getElementById("cancelCall");
 
 const statusText = document.getElementById("status");
 const incomingCallDiv = document.getElementById("incomingCall");
+
+const localVideo = document.getElementById("localVideo");
+const remoteVideo = document.getElementById("remoteVideo");
 // MARK: - VARIABLES
 let myUsername = "";
 let callingUser = "";
@@ -19,6 +22,7 @@ let peerConnection;
 let localStream;
 let offerReceived = null;
 let accepted = false;
+let micEnabled = false;
 // MARK: - FUNCTIONS
 function updateStatus(text, isError = false) {
   statusText.textContent = `Durum: ${text}`;
@@ -32,15 +36,36 @@ function showIncomingCall() {
 function hideIncomingCall() {
   document.getElementById("incomingCall").style.display = "none";
 }
+
+function toggleMicStream(enabled) {
+  if (!localStream) return;
+  localStream.getAudioTracks().forEach((track) => {
+    track.enabled = enabled;
+  });
+}
 // MARK: - ASYNC FUNCTIONS
-async function getMicrophoneStream() {
+// async function getMicrophoneStream() {
+//   try {
+//     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+//     return stream;
+//   } catch (err) {
+//     updateStatus("Mikrofon izni reddedildi. Lütfen izin verin.", true);
+//     alert("Lütfen mikrofon erişimine izin verin.");
+//     throw err;
+//   }
+// }
+
+async function getMediaStream() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true,
+    });
+    localVideo.srcObject = stream;
     return stream;
-  } catch (err) {
-    updateStatus("Mikrofon izni reddedildi. Lütfen izin verin.", true);
-    alert("Lütfen mikrofon erişimine izin verin.");
-    throw err;
+  } catch (e) {
+    updateStatus("Kamera/mikrofon izni reddedildi.", true);
+    throw e;
   }
 }
 
@@ -59,9 +84,9 @@ async function setupPeerConnection() {
   };
 
   peerConnection.ontrack = (event) => {
-    const remoteAudio = new Audio();
-    remoteAudio.srcObject = event.streams[0];
-    remoteAudio.play();
+    if (!remoteVideo.srcObject) {
+      remoteVideo.srcObject = event.streams[0];
+    }
   };
 }
 
@@ -86,7 +111,7 @@ startCallBtn.onclick = async () => {
   if (!callingUser) return alert("Hedef kullanıcı seçilmedi.");
 
   await setupPeerConnection();
-  localStream = await getMicrophoneStream();
+  localStream = await getMediaStream();
   localStream
     .getTracks()
     .forEach((track) => peerConnection.addTrack(track, localStream));
@@ -108,7 +133,7 @@ acceptCallBtn.onclick = async () => {
 
   accepted = true;
   await setupPeerConnection();
-  localStream = await getMicrophoneStream();
+  localStream = await getMediaStream();
   localStream
     .getTracks()
     .forEach((track) => peerConnection.addTrack(track, localStream));
@@ -207,10 +232,31 @@ socket.on("user-list", (users) => {
   startCallBtn.disabled = users.length <= 1;
 });
 
+// MARK: - UI EVENTS
+document.addEventListener("keydown", (e) => {
+  if (e.code === "Space" && !micEnabled) {
+    micEnabled = true;
+    toggleMicStream(true);
+    updateStatus("🎙️ Mikrofon açık (bas-konuş)");
+  } else if (e.code === "KeyA") {
+    acceptCallBtn.click();
+  } else if (e.code === "Escape") {
+    endCallBtn.click();
+  }
+});
+
+document.addEventListener("keyup", (e) => {
+  if (e.code === "Space") {
+    micEnabled = false;
+    toggleMicStream(false);
+    updateStatus("🔇 Mikrofon kapalı");
+  }
+});
+
 // MARK: - INITIALIZATION
 window.onload = async () => {
   try {
-    await getMicrophoneStream();
+    await getMediaStream();
     updateStatus("Mikrofon erişimi başarılı.");
     startCallBtn.disabled = false;
     acceptCallBtn.disabled = false;
